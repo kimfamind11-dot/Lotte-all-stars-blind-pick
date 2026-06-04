@@ -1,0 +1,2628 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>야구 블라인드 스탯 맞추기 (스트리머 인게임 패널)</title>
+    <style>
+        :root { 
+            --bg-color: #0d1117; 
+            --card-bg: #161b22; 
+            --neon-green: #00ff66; 
+            --neon-blue: #00e5ff; 
+            --text-color: #ffffff; 
+            --border-color: #30363d; 
+            --grass-dark: #14351f; 
+            --grass-light: #1b4427; 
+            --dirt-color: #7c5234; 
+            --line-color: rgba(255, 255, 255, 0.6); 
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; height: 100vh; overflow: hidden; padding: 20px; position: relative; }
+        
+        /* 메인 타이틀 페이지 (선명한 카드 버전) */
+        #main-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('main.jpg');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 5000;
+            transition: opacity 0.5s ease-in-out, visibility 0.5s;
+        }
+        .main-content-card {
+            background: rgba(13, 17, 23, 0.85);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px 50px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .main-title-box { text-align: center; margin-bottom: 25px; }
+        .main-title-sub { font-size: 18px; color: var(--neon-green); font-weight: bold; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 10px; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); }
+        .main-title-main { font-size: 42px; font-weight: 900; color: #ffffff; letter-spacing: -1px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); }
+        .main-title-main span { color: var(--neon-blue); }
+        .desc-box { width: 100%; text-align: center; margin-bottom: 35px; line-height: 1.7; font-size: 14.5px; color: #e2e8f0; }
+        .desc-box p { margin-bottom: 8px; }
+        .desc-box p:last-child { margin-bottom: 0; }
+        .enter-btn { background-color: #21262d; border: 2px solid var(--neon-blue); color: var(--neon-blue); padding: 14px 50px; font-size: 18px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); transition: all 0.3s ease; }
+        .enter-btn:hover { background-color: var(--neon-blue); color: #000000; box-shadow: 0 0 25px rgba(0, 229, 255, 0.7); transform: scale(1.03); }
+
+        /* 게임 패널 레이아웃 */
+        #game-panel { display: flex; gap: 15px; height: 100%; position: relative; width: 100%; }
+        .bench-container { width: 280px; background-color: #12161a; border: 2px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; padding: 12px 12px 58px 12px; height: 100%; min-width: 0; min-height: 0; position: relative; }
+        .bench-title { text-align: center; color: var(--neon-blue); font-size: 15px; margin-bottom: 10px; font-weight: bold; }
+        .bench-filter-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 12px; }
+        .filter-btn { background-color: #21262d; border: 1px solid var(--border-color); color: #c9d1d9; padding: 6px 2px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; text-align: center; }
+        .filter-btn.active { background-color: var(--neon-blue); color: #000; border-color: var(--neon-blue); }
+        
+        .bench-zone { flex: 1; border: 1px dashed rgba(255,255,255,0.05); border-radius: 4px; padding: 8px; }
+        #bench-zone { display: grid; grid-template-columns: repeat(2, 106px); gap: 8px; align-content: start; justify-content: center; overflow-y: auto; overflow-x: hidden; height: 100%; padding-right: 4px; }
+        .bench-section-title { grid-column: 1 / -1; color: var(--neon-green); font-size: 11px; font-weight: bold; padding: 6px 4px 2px; border-bottom: 1px solid rgba(0,255,102,0.25); text-align: left; }
+        
+        /* 그라운드 경기장 */
+        .ground-container { flex: 1; border-radius: 8px; position: relative; border: 3px solid #1f242c; height: 100%; overflow: hidden; background: radial-gradient(circle at 50% 66%, var(--dirt-color) 0%, var(--dirt-color) 33%, transparent 33.5%), linear-gradient(45deg, var(--grass-dark) 25%, var(--grass-light) 25%, var(--grass-light) 50%, var(--grass-dark) 50%, var(--grass-dark) 75%, var(--grass-light) 75%, var(--grass-light) 100%); background-size: 100% 100%, 60px 60px; box-shadow: inset 0 0 80px rgba(0,0,0,0.8); }
+        .ground-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .diamond-line { position: absolute; top: 64%; left: 50%; width: 300px; height: 300px; border: 3px solid var(--line-color); transform: translate(-50%, -50%) rotate(45deg); }
+        .outfield-arc { position: absolute; top: 25%; left: 50%; width: 620px; height: 620px; border: 4px solid var(--dirt-color); border-radius: 50%; transform: translateX(-50%); }
+        
+        /* 포지션 슬롯 */
+        .position-slot { position: absolute; width: 110px; height: 156px; border: 2px dashed rgba(255, 255, 255, 0.4); border-radius: 8px; background-color: rgba(0, 0, 0, 0.6); display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translate(-50%, -50%); transition: all 0.2s; z-index: 10; }
+        .position-slot::before { content: attr(data-display-pos); position: absolute; font-size: 16px; font-weight: 900; color: rgba(255, 255, 255, 0.15); pointer-events: none; }
+        .position-slot.drag-over { border-color: var(--neon-green); background-color: rgba(0, 255, 102, 0.2); }
+        .slot-of1 { top: 16%; left: 24%; } .slot-of2 { top: 12%; left: 50%; } .slot-of3 { top: 16%; left: 76%; } .slot-ss { top: 40%; left: 36%; } .slot-2b { top: 40%; left: 64%; } .slot-3b { top: 58%; left: 24%; } .slot-1b { top: 58%; left: 76%; } .slot-sp { top: 58%; left: 50%; } .slot-rp { top: 82%; left: 14%; } .slot-cp { top: 82%; left: 30%; } .slot-c { top: 82%; left: 50%; } .slot-dh { top: 82%; left: 84%; border-style: double; border-width: 3px; }
+        
+        /* 우측 타순 관리 */
+        .lineup-container { width: 300px; background-color: #12161a; border: 2px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; padding: 12px; height: 100%; }
+        .lineup-list { flex: 1; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+        .lineup-item { background-color: #161b22; border: 1px solid var(--border-color); border-radius: 4px; padding: 7px 9px; display: flex; align-items: center; gap: 8px; cursor: grab; user-select: none; min-height: 64px; }
+        .lineup-item.drag-over-lineup { border-top: 2px solid var(--neon-green); background-color: rgba(0, 255, 102, 0.05); }
+        .lineup-num { font-weight: bold; color: var(--neon-blue); width: 24px; flex-shrink: 0; }
+        .lineup-info { flex: 1; display: flex; flex-direction: column; overflow: hidden; justify-content: center; gap: 2px; min-width: 0; }
+        .lineup-name { font-size: 13px; color: #8b949e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lineup-name.filled { color: #fff; font-weight: bold; }
+        .lineup-stats { font-size: 10px; color: #8b949e; overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.25; display: block; }
+        .lineup-pos { font-size: 11px; background-color: #21262d; padding: 2px 4px; border-radius: 3px; color: #c9d1d9; flex-shrink: 0; }
+        
+        /* 하단 가이드 버튼 & 모달 */
+        .footer-guide-btn { position: absolute; bottom: 20px; left: 20px; width: 240px; z-index: 1000; background-color: #21262d; border: 1px solid var(--border-color); color: #fff; padding: 8px 14px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; text-align: center; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 2000; }
+        .modal-content { background-color: #161b22; border: 2px solid var(--border-color); border-radius: 8px; width: 90%; max-width: 650px; max-height: 80vh; display: flex; flex-direction: column; }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 16px; font-weight: bold; color: var(--neon-blue); } .modal-close { background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; }
+        .modal-body { padding: 20px; overflow-y: auto; font-size: 14px; line-height: 1.6; color: #c9d1d9; white-space: pre-wrap; }
+        
+        /* ================= [수정 및 버그 해결] 선수 카드 및 내부 스크롤 디자인 ================= */
+        .player-card { 
+            width: 106px; 
+            height: 150px; 
+            background-color: var(--card-bg); 
+            border: 2px solid var(--neon-blue); 
+            border-radius: 6px; 
+            display: flex; 
+            flex-direction: column; 
+            cursor: grab; 
+            position: relative; 
+            user-select: none; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.7); 
+            overflow: hidden; 
+            flex: 0 0 auto;
+        }
+        .card-header { background-color: #1f242c; padding: 4px; font-size: 10px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .card-id { color: var(--neon-blue); } 
+        .card-pos-tag { background: #238636; color: white; padding: 0px 3px; border-radius: 2px; font-size: 9px; }
+        
+        /* [핵심 수정] card-body 내부 항목이 많아도 짤리지 않도록 스크롤바 메커니즘 전면 활성화 */
+        .card-body { 
+            flex: 1; 
+            padding: 4px 6px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 3px; 
+            overflow-y: auto; /* 세로 스크롤 허용 */
+            overflow-x: hidden; /* 가로 스크롤은 비활성화 */
+            font-size: 10px; 
+        }
+
+        /* 카드 커스텀 내부 스크롤바 디자인 (세련되고 얇은 네온 블루 스티치 테마) */
+        .card-body::-webkit-scrollbar {
+            width: 3px; /* 카드 크기를 고려한 초슬림 폭 */
+        }
+        .card-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .card-body::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 229, 255, 0.3); /* 네온 블루 반투명 */
+            border-radius: 2px;
+        }
+        .card-body::-webkit-scrollbar-thumb:hover {
+            background-color: var(--neon-blue); /* 마우스 호버 시 완전히 밝아짐 */
+        }
+
+        .stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 1px; flex-shrink: 0; }
+        .stat-name { color: #8b949e; } 
+        .stat-value { font-weight: bold; color: #fff; }
+        
+        .card-footer { padding: 4px; background-color: #1f242c; border-top: 1px solid var(--border-color); text-align: center; font-size: 9px; color: #8b949e; flex-shrink: 0; }
+        .player-card.placed-in-slot .card-footer { color: var(--neon-green); font-weight: bold; animation: pulse-text 1.5s infinite; }
+        @keyframes pulse-text { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        
+        .player-card.revealed { border-color: var(--neon-green); box-shadow: 0 0 15px rgba(0, 255, 102, 0.5); animation: flip 0.4s ease-in-out; }
+        .player-card.revealed .card-id { color: var(--neon-green); }
+        .player-card.revealed .card-footer, .player-card.revealed .longpress-gauge { display: none; }
+        @keyframes flip { 0% { transform: scaleX(1); } 50% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+        
+        .longpress-gauge { position: absolute; bottom: 0; left: 0; width: 0%; height: 6px; background: linear-gradient(90deg, var(--neon-blue), var(--neon-green)); transition: width 0.1s linear; z-index: 50; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div id="main-panel">
+        <div class="main-content-card">
+            <div class="main-title-box">
+                <div class="main-title-sub">LOTTE ALL-STARS BLIND PICK</div>
+                <div class="main-title-main">롯데 올스타 <span>블라인드 픽</span></div>
+            </div>
+            
+            <div class="desc-box">
+                <p><strong>[야구자문위원 Fred Kim '그런건 없다' 제공]</strong></p>
+<p style="margin-top:10px;">선수들의 이름과 연도가 가려진 순수 스탯 카드를 보고,</p>
+<p>포지션별 최적의 라인업과 타순을 완성해보세요.</p>
+<p style="margin-top:10px; color:var(--neon-blue); font-weight:bold; font-size:10px;">※ 슬롯에 배치한 카드를 1초간 누르면 정체가 공개됩니다.</p>
+<p style="margin-top:10px; color:var(--neon-blue); font-weight:bold; font-size:10px;">※ 잘 모르는 스탯 용어는 좌측 하단 설명버튼을 눌러보세요.</p>
+<p style="margin-top:10px; color:var(--neon-blue); font-weight:bold; font-size:10px;">※ 선수카드에 마우스 휠 스크롤로 세부스탯을 볼 수 있어요.</p>
+            </div>
+            
+            <button class="enter-btn" onclick="startGame()">시작 (F11 전체화면 권장)</button>
+        </div>
+    </div>
+
+    <div id="game-panel">
+        <button class="footer-guide-btn" onclick="openGuideModal()">스탯 용어 설명</button>
+        <div class="bench-container">
+            <div class="bench-title">블라인드 Pick 벤치</div>
+            <div class="bench-filter-tabs">
+                <button class="filter-btn active" data-pos="C" onclick="filterBench('C')">포수</button>
+                <button class="filter-btn" data-pos="1B" onclick="filterBench('1B')">1B</button>
+                <button class="filter-btn" data-pos="2B" onclick="filterBench('2B')">2B</button>
+                <button class="filter-btn" data-pos="3B" onclick="filterBench('3B')">3B</button>
+                <button class="filter-btn" data-pos="SS" onclick="filterBench('SS')">SS</button>
+                <button class="filter-btn" data-pos="CF" onclick="filterBench('CF')">CF</button>
+                <button class="filter-btn" data-pos="LF/RF" onclick="filterBench('LF/RF')">LF/RF</button>
+                <button class="filter-btn" data-pos="DH" onclick="filterBench('DH')">지명</button>
+                <button class="filter-btn" data-pos="SP" onclick="filterBench('SP')">선발</button>
+                <button class="filter-btn" data-pos="RP" onclick="filterBench('RP')">필승조</button>
+                <button class="filter-btn" data-pos="CP" onclick="filterBench('CP')">마무리</button>
+            </div>
+            <div class="bench-zone" id="bench-zone"></div>
+        </div>
+        
+        <div class="ground-container">
+            <div class="ground-lines"><div class="outfield-arc"></div><div class="diamond-line"></div></div>
+            <div class="position-slot slot-of1" data-pos="LF/RF" data-display-pos="LF/RF"></div>
+            <div class="position-slot slot-of2" data-pos="CF" data-display-pos="중견수"></div>
+            <div class="position-slot slot-of3" data-pos="LF/RF" data-display-pos="LF/RF"></div>
+            <div class="position-slot slot-ss"  data-pos="SS" data-display-pos="유격수"></div>
+            <div class="position-slot slot-2b"  data-pos="2B" data-display-pos="2루수"></div>
+            <div class="position-slot slot-3b"  data-pos="3B" data-display-pos="3루수"></div>
+            <div class="position-slot slot-1b"  data-pos="1B" data-display-pos="1루수"></div>
+            <div class="position-slot slot-sp"  data-pos="SP" data-display-pos="선발"></div>
+            <div class="position-slot slot-rp"  data-pos="RP" data-display-pos="필승조"></div>
+            <div class="position-slot slot-cp"  data-pos="CP" data-display-pos="마무리"></div>
+            <div class="position-slot slot-c"   data-pos="C"  data-display-pos="포수"></div>
+            <div class="position-slot slot-dh"  data-pos="DH" data-display-pos="지명"></div>
+        </div>
+        
+        <div class="lineup-container">
+            <div class="bench-title">타순 Line Up</div>
+            <div class="lineup-list" id="lineup-list"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="guide-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📜 스탯 용어 설명</div>
+                <button class="modal-close" onclick="closeGuideModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body-content"></div>
+        </div>
+    </div>
+
+<script>
+function startGame() {
+    const mainPanel = document.getElementById('main-panel');
+    mainPanel.style.opacity = '0';
+    setTimeout(() => {
+        mainPanel.style.visibility = 'hidden';
+    }, 500);
+}
+
+// 롯데 올스타 블라인드 선수 데이터 원본 백업본 유지
+const savedPlayersData = [
+  {
+    "id": "PLAYER 01",
+    "realName": "15 강민호",
+    "position": "C",
+    "displayPosition": "포수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.311"
+      },
+      {
+        "name": "출루율",
+        "value": "0.421"
+      },
+      {
+        "name": "장타율",
+        "value": "0.639"
+      },
+      {
+        "name": "OPS",
+        "value": "1.06"
+      },
+      {
+        "name": "홈런",
+        "value": "35"
+      },
+      {
+        "name": "타점",
+        "value": "86"
+      },
+      {
+        "name": "도루",
+        "value": "0"
+      },
+      {
+        "name": "WAR",
+        "value": "6.36"
+      },
+      {
+        "name": "oWAR",
+        "value": "6"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.36"
+      },
+      {
+        "name": "wRC+",
+        "value": "163"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 02",
+    "realName": "96 임수혁",
+    "position": "C",
+    "displayPosition": "포수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.311"
+      },
+      {
+        "name": "출루율",
+        "value": "0.385"
+      },
+      {
+        "name": "장타율",
+        "value": "0.458"
+      },
+      {
+        "name": "OPS",
+        "value": "0.843"
+      },
+      {
+        "name": "홈런",
+        "value": "11"
+      },
+      {
+        "name": "타점",
+        "value": "76"
+      },
+      {
+        "name": "도루",
+        "value": "4"
+      },
+      {
+        "name": "WAR",
+        "value": "4.73"
+      },
+      {
+        "name": "oWAR",
+        "value": "4.32"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.41"
+      },
+      {
+        "name": "wRC+",
+        "value": "148.3"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 03",
+    "realName": "01 최기문",
+    "position": "C",
+    "displayPosition": "포수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.304"
+      },
+      {
+        "name": "출루율",
+        "value": "0.375"
+      },
+      {
+        "name": "장타율",
+        "value": "0.41"
+      },
+      {
+        "name": "OPS",
+        "value": "0.785"
+      },
+      {
+        "name": "홈런",
+        "value": "7"
+      },
+      {
+        "name": "타점",
+        "value": "47"
+      },
+      {
+        "name": "도루",
+        "value": "8"
+      },
+      {
+        "name": "WAR",
+        "value": "3.13"
+      },
+      {
+        "name": "oWAR",
+        "value": "2.22"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.92"
+      },
+      {
+        "name": "wRC+",
+        "value": "109.1"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 04",
+    "realName": "99 마해영",
+    "position": "1B",
+    "displayPosition": "1루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.372"
+      },
+      {
+        "name": "출루율",
+        "value": "0.442"
+      },
+      {
+        "name": "장타율",
+        "value": "0.672"
+      },
+      {
+        "name": "OPS",
+        "value": "1.114"
+      },
+      {
+        "name": "홈런",
+        "value": "35"
+      },
+      {
+        "name": "타점",
+        "value": "119"
+      },
+      {
+        "name": "도루",
+        "value": "6"
+      },
+      {
+        "name": "WAR",
+        "value": "6.64"
+      },
+      {
+        "name": "oWAR",
+        "value": "8.16"
+      },
+      {
+        "name": "dWAR",
+        "value": "-1.53"
+      },
+      {
+        "name": "wRC+",
+        "value": "185.2"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 05",
+    "realName": "07 이대호",
+    "position": "1B",
+    "displayPosition": "1루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.335"
+      },
+      {
+        "name": "출루율",
+        "value": "0.453"
+      },
+      {
+        "name": "장타율",
+        "value": "0.6"
+      },
+      {
+        "name": "OPS",
+        "value": "1.053"
+      },
+      {
+        "name": "홈런",
+        "value": "29"
+      },
+      {
+        "name": "타점",
+        "value": "87"
+      },
+      {
+        "name": "도루",
+        "value": "1"
+      },
+      {
+        "name": "WAR",
+        "value": "6.27"
+      },
+      {
+        "name": "oWAR",
+        "value": "7.61"
+      },
+      {
+        "name": "dWAR",
+        "value": "-1.33"
+      },
+      {
+        "name": "wRC+",
+        "value": "187.9"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 06",
+    "realName": "91 김민호",
+    "position": "1B",
+    "displayPosition": "1루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.303"
+      },
+      {
+        "name": "출루율",
+        "value": "0.388"
+      },
+      {
+        "name": "장타율",
+        "value": "0.559"
+      },
+      {
+        "name": "OPS",
+        "value": "0.947"
+      },
+      {
+        "name": "홈런",
+        "value": "20"
+      },
+      {
+        "name": "타점",
+        "value": "68"
+      },
+      {
+        "name": "도루",
+        "value": "1"
+      },
+      {
+        "name": "WAR",
+        "value": "4.79"
+      },
+      {
+        "name": "oWAR",
+        "value": "5.11"
+      },
+      {
+        "name": "dWAR",
+        "value": "-0.32"
+      },
+      {
+        "name": "wRC+",
+        "value": "162.4"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 07",
+    "realName": "92 박정태",
+    "position": "2B",
+    "displayPosition": "2루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.335"
+      },
+      {
+        "name": "출루율",
+        "value": "0.424"
+      },
+      {
+        "name": "장타율",
+        "value": "0.539"
+      },
+      {
+        "name": "OPS",
+        "value": "0.963"
+      },
+      {
+        "name": "홈런",
+        "value": "14"
+      },
+      {
+        "name": "타점",
+        "value": "79"
+      },
+      {
+        "name": "도루",
+        "value": "7"
+      },
+      {
+        "name": "WAR",
+        "value": "6.14"
+      },
+      {
+        "name": "oWAR",
+        "value": "6.52"
+      },
+      {
+        "name": "dWAR",
+        "value": "-0.38"
+      },
+      {
+        "name": "wRC+",
+        "value": "167.9"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 08",
+    "realName": "98 박정태",
+    "position": "2B",
+    "displayPosition": "2루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.318"
+      },
+      {
+        "name": "출루율",
+        "value": "0.394"
+      },
+      {
+        "name": "장타율",
+        "value": "0.483"
+      },
+      {
+        "name": "OPS",
+        "value": "0.877"
+      },
+      {
+        "name": "홈런",
+        "value": "13"
+      },
+      {
+        "name": "타점",
+        "value": "79"
+      },
+      {
+        "name": "도루",
+        "value": "1"
+      },
+      {
+        "name": "WAR",
+        "value": "5.6"
+      },
+      {
+        "name": "oWAR",
+        "value": "5.01"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.59"
+      },
+      {
+        "name": "wRC+",
+        "value": "150.7"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 09",
+    "realName": "08 조성환",
+    "position": "2B",
+    "displayPosition": "2루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.327"
+      },
+      {
+        "name": "출루율",
+        "value": "0.382"
+      },
+      {
+        "name": "장타율",
+        "value": "0.463"
+      },
+      {
+        "name": "OPS",
+        "value": "0.845"
+      },
+      {
+        "name": "홈런",
+        "value": "10"
+      },
+      {
+        "name": "타점",
+        "value": "81"
+      },
+      {
+        "name": "도루",
+        "value": "31"
+      },
+      {
+        "name": "WAR",
+        "value": "5.19"
+      },
+      {
+        "name": "oWAR",
+        "value": "5.24"
+      },
+      {
+        "name": "dWAR",
+        "value": "-0.05"
+      },
+      {
+        "name": "wRC+",
+        "value": "138.3"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 10",
+    "realName": "10 조성환",
+    "position": "2B",
+    "displayPosition": "2루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.336"
+      },
+      {
+        "name": "출루율",
+        "value": "0.39"
+      },
+      {
+        "name": "장타율",
+        "value": "0.469"
+      },
+      {
+        "name": "OPS",
+        "value": "0.859"
+      },
+      {
+        "name": "홈런",
+        "value": "8"
+      },
+      {
+        "name": "타점",
+        "value": "52"
+      },
+      {
+        "name": "도루",
+        "value": "8"
+      },
+      {
+        "name": "WAR",
+        "value": "4.13"
+      },
+      {
+        "name": "oWAR",
+        "value": "4.27"
+      },
+      {
+        "name": "dWAR",
+        "value": "-0.14"
+      },
+      {
+        "name": "wRC+",
+        "value": "139"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 11",
+    "realName": "10 이대호",
+    "position": "3B",
+    "displayPosition": "3루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.364"
+      },
+      {
+        "name": "출루율",
+        "value": "0.444"
+      },
+      {
+        "name": "장타율",
+        "value": "0.667"
+      },
+      {
+        "name": "OPS",
+        "value": "1.111"
+      },
+      {
+        "name": "홈런",
+        "value": "44"
+      },
+      {
+        "name": "타점",
+        "value": "133"
+      },
+      {
+        "name": "도루",
+        "value": "0"
+      },
+      {
+        "name": "WAR",
+        "value": "7.1"
+      },
+      {
+        "name": "oWAR",
+        "value": "8.29"
+      },
+      {
+        "name": "dWAR",
+        "value": "-1.19"
+      },
+      {
+        "name": "wRC+",
+        "value": "188.3"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 12",
+    "realName": "16 황재균",
+    "position": "3B",
+    "displayPosition": "3루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.335"
+      },
+      {
+        "name": "출루율",
+        "value": "0.394"
+      },
+      {
+        "name": "장타율",
+        "value": "0.57"
+      },
+      {
+        "name": "OPS",
+        "value": "0.964"
+      },
+      {
+        "name": "홈런",
+        "value": "27"
+      },
+      {
+        "name": "타점",
+        "value": "113"
+      },
+      {
+        "name": "도루",
+        "value": "25"
+      },
+      {
+        "name": "WAR",
+        "value": "5.05"
+      },
+      {
+        "name": "oWAR",
+        "value": "4.27"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.78"
+      },
+      {
+        "name": "wRC+",
+        "value": "128.2"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 13",
+    "realName": "97 박현승",
+    "position": "3B",
+    "displayPosition": "3루수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.301"
+      },
+      {
+        "name": "출루율",
+        "value": "0.369"
+      },
+      {
+        "name": "장타율",
+        "value": "0.522"
+      },
+      {
+        "name": "OPS",
+        "value": "0.891"
+      },
+      {
+        "name": "홈런",
+        "value": "19"
+      },
+      {
+        "name": "타점",
+        "value": "63"
+      },
+      {
+        "name": "도루",
+        "value": "12"
+      },
+      {
+        "name": "WAR",
+        "value": "4.13"
+      },
+      {
+        "name": "oWAR",
+        "value": "4.7"
+      },
+      {
+        "name": "dWAR",
+        "value": "-0.57"
+      },
+      {
+        "name": "wRC+",
+        "value": "147.2"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 14",
+    "realName": "91 장효조",
+    "position": "LF/RF",
+    "displayPosition": "LF/RF",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.347"
+      },
+      {
+        "name": "출루율",
+        "value": "0.452"
+      },
+      {
+        "name": "장타율",
+        "value": "0.488"
+      },
+      {
+        "name": "OPS",
+        "value": "0.94"
+      },
+      {
+        "name": "홈런",
+        "value": "4"
+      },
+      {
+        "name": "타점",
+        "value": "54"
+      },
+      {
+        "name": "도루",
+        "value": "12"
+      },
+      {
+        "name": "WAR",
+        "value": "6.19"
+      },
+      {
+        "name": "oWAR",
+        "value": "5.98"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.21"
+      },
+      {
+        "name": "wRC+",
+        "value": "180.4"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 15",
+    "realName": "18 전준우",
+    "position": "LF/RF",
+    "displayPosition": "LF/RF",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.342"
+      },
+      {
+        "name": "출루율",
+        "value": "0.4"
+      },
+      {
+        "name": "장타율",
+        "value": "0.592"
+      },
+      {
+        "name": "OPS",
+        "value": "0.992"
+      },
+      {
+        "name": "홈런",
+        "value": "33"
+      },
+      {
+        "name": "타점",
+        "value": "90"
+      },
+      {
+        "name": "도루",
+        "value": "7"
+      },
+      {
+        "name": "WAR",
+        "value": "5.41"
+      },
+      {
+        "name": "oWAR",
+        "value": "5.08"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.32"
+      },
+      {
+        "name": "wRC+",
+        "value": "141.4"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 16",
+    "realName": "96 김응국",
+    "position": "LF/RF",
+    "displayPosition": "LF/RF",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.321"
+      },
+      {
+        "name": "출루율",
+        "value": "0.406"
+      },
+      {
+        "name": "장타율",
+        "value": "0.457"
+      },
+      {
+        "name": "OPS",
+        "value": "0.863"
+      },
+      {
+        "name": "홈런",
+        "value": "9"
+      },
+      {
+        "name": "타점",
+        "value": "64"
+      },
+      {
+        "name": "도루",
+        "value": "26"
+      },
+      {
+        "name": "WAR",
+        "value": "5.16"
+      },
+      {
+        "name": "oWAR",
+        "value": "6.36"
+      },
+      {
+        "name": "dWAR",
+        "value": "-1.2"
+      },
+      {
+        "name": "wRC+",
+        "value": "162.2"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 17",
+    "realName": "84 홍문종",
+    "position": "CF",
+    "displayPosition": "중견수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.339"
+      },
+      {
+        "name": "출루율",
+        "value": "0.415"
+      },
+      {
+        "name": "장타율",
+        "value": "0.539"
+      },
+      {
+        "name": "OPS",
+        "value": "0.954"
+      },
+      {
+        "name": "홈런",
+        "value": "11"
+      },
+      {
+        "name": "타점",
+        "value": "53"
+      },
+      {
+        "name": "도루",
+        "value": "36"
+      },
+      {
+        "name": "WAR",
+        "value": "5.83"
+      },
+      {
+        "name": "oWAR",
+        "value": "5.48"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.35"
+      },
+      {
+        "name": "wRC+",
+        "value": "178.7"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 18",
+    "realName": "95 전준호",
+    "position": "CF",
+    "displayPosition": "중견수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.308"
+      },
+      {
+        "name": "출루율",
+        "value": "0.393"
+      },
+      {
+        "name": "장타율",
+        "value": "0.395"
+      },
+      {
+        "name": "OPS",
+        "value": "0.788"
+      },
+      {
+        "name": "홈런",
+        "value": "1"
+      },
+      {
+        "name": "타점",
+        "value": "42"
+      },
+      {
+        "name": "도루",
+        "value": "69"
+      },
+      {
+        "name": "WAR",
+        "value": "5.28"
+      },
+      {
+        "name": "oWAR",
+        "value": "5.08"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.2"
+      },
+      {
+        "name": "wRC+",
+        "value": "141.8"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 19",
+    "realName": "15 아두치",
+    "position": "CF",
+    "displayPosition": "중견수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.314"
+      },
+      {
+        "name": "출루율",
+        "value": "0.384"
+      },
+      {
+        "name": "장타율",
+        "value": "0.557"
+      },
+      {
+        "name": "OPS",
+        "value": "0.941"
+      },
+      {
+        "name": "홈런",
+        "value": "28"
+      },
+      {
+        "name": "타점",
+        "value": "106"
+      },
+      {
+        "name": "도루",
+        "value": "24"
+      },
+      {
+        "name": "WAR",
+        "value": "4.77"
+      },
+      {
+        "name": "oWAR",
+        "value": "4.37"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.4"
+      },
+      {
+        "name": "wRC+",
+        "value": "130.3"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 20",
+    "realName": "17 전준우",
+    "position": "CF",
+    "displayPosition": "중견수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.321"
+      },
+      {
+        "name": "출루율",
+        "value": "0.37"
+      },
+      {
+        "name": "장타율",
+        "value": "0.503"
+      },
+      {
+        "name": "OPS",
+        "value": "0.873"
+      },
+      {
+        "name": "홈런",
+        "value": "18"
+      },
+      {
+        "name": "타점",
+        "value": "69"
+      },
+      {
+        "name": "도루",
+        "value": "2"
+      },
+      {
+        "name": "WAR",
+        "value": "3.21"
+      },
+      {
+        "name": "oWAR",
+        "value": "2.84"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.37"
+      },
+      {
+        "name": "wRC+",
+        "value": "115.9"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 21",
+    "realName": "01 호세",
+    "position": "LF/RF",
+    "displayPosition": "LF/RF",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.335"
+      },
+      {
+        "name": "출루율",
+        "value": "0.503"
+      },
+      {
+        "name": "장타율",
+        "value": "0.695"
+      },
+      {
+        "name": "OPS",
+        "value": "1.198"
+      },
+      {
+        "name": "홈런",
+        "value": "36"
+      },
+      {
+        "name": "타점",
+        "value": "102"
+      },
+      {
+        "name": "도루",
+        "value": "7"
+      },
+      {
+        "name": "WAR",
+        "value": "7.88"
+      },
+      {
+        "name": "oWAR",
+        "value": "8.31"
+      },
+      {
+        "name": "dWAR",
+        "value": "-0.44"
+      },
+      {
+        "name": "wRC+",
+        "value": "203"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 22",
+    "realName": "17 손아섭",
+    "position": "LF/RF",
+    "displayPosition": "LF/RF",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.335"
+      },
+      {
+        "name": "출루율",
+        "value": "0.42"
+      },
+      {
+        "name": "장타율",
+        "value": "0.514"
+      },
+      {
+        "name": "OPS",
+        "value": "0.934"
+      },
+      {
+        "name": "홈런",
+        "value": "20"
+      },
+      {
+        "name": "타점",
+        "value": "80"
+      },
+      {
+        "name": "도루",
+        "value": "25"
+      },
+      {
+        "name": "WAR",
+        "value": "5.77"
+      },
+      {
+        "name": "oWAR",
+        "value": "5.28"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.49"
+      },
+      {
+        "name": "wRC+",
+        "value": "134.6"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 23",
+    "realName": "08 가르시아",
+    "position": "LF/RF",
+    "displayPosition": "LF/RF",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.283"
+      },
+      {
+        "name": "출루율",
+        "value": "0.353"
+      },
+      {
+        "name": "장타율",
+        "value": "0.541"
+      },
+      {
+        "name": "OPS",
+        "value": "0.894"
+      },
+      {
+        "name": "홈런",
+        "value": "30"
+      },
+      {
+        "name": "타점",
+        "value": "111"
+      },
+      {
+        "name": "도루",
+        "value": "2"
+      },
+      {
+        "name": "WAR",
+        "value": "3.8"
+      },
+      {
+        "name": "oWAR",
+        "value": "4.85"
+      },
+      {
+        "name": "dWAR",
+        "value": "-1.05"
+      },
+      {
+        "name": "wRC+",
+        "value": "140.7"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 24",
+    "realName": "18 신본기",
+    "position": "SS",
+    "displayPosition": "유격수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.294"
+      },
+      {
+        "name": "출루율",
+        "value": "0.357"
+      },
+      {
+        "name": "장타율",
+        "value": "0.442"
+      },
+      {
+        "name": "OPS",
+        "value": "0.799"
+      },
+      {
+        "name": "홈런",
+        "value": "11"
+      },
+      {
+        "name": "타점",
+        "value": "71"
+      },
+      {
+        "name": "도루",
+        "value": "1"
+      },
+      {
+        "name": "WAR",
+        "value": "1.4"
+      },
+      {
+        "name": "oWAR",
+        "value": "1.7"
+      },
+      {
+        "name": "dWAR",
+        "value": "-0.29"
+      },
+      {
+        "name": "wRC+",
+        "value": "95.5"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 25",
+    "realName": "20 마차도",
+    "position": "SS",
+    "displayPosition": "유격수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.28"
+      },
+      {
+        "name": "출루율",
+        "value": "0.356"
+      },
+      {
+        "name": "장타율",
+        "value": "0.422"
+      },
+      {
+        "name": "OPS",
+        "value": "0.778"
+      },
+      {
+        "name": "홈런",
+        "value": "12"
+      },
+      {
+        "name": "타점",
+        "value": "67"
+      },
+      {
+        "name": "도루",
+        "value": "15"
+      },
+      {
+        "name": "WAR",
+        "value": "3.92"
+      },
+      {
+        "name": "oWAR",
+        "value": "3.4"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.52"
+      },
+      {
+        "name": "wRC+",
+        "value": "103.6"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 26",
+    "realName": "08 박기혁",
+    "position": "SS",
+    "displayPosition": "유격수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.291"
+      },
+      {
+        "name": "출루율",
+        "value": "0.364"
+      },
+      {
+        "name": "장타율",
+        "value": "0.342"
+      },
+      {
+        "name": "OPS",
+        "value": "0.706"
+      },
+      {
+        "name": "홈런",
+        "value": "1"
+      },
+      {
+        "name": "타점",
+        "value": "36"
+      },
+      {
+        "name": "도루",
+        "value": "16"
+      },
+      {
+        "name": "WAR",
+        "value": "2.48"
+      },
+      {
+        "name": "oWAR",
+        "value": "2.14"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.34"
+      },
+      {
+        "name": "wRC+",
+        "value": "107.7"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 27",
+    "realName": "99 김민재",
+    "position": "SS",
+    "displayPosition": "유격수",
+    "stats": [
+      {
+        "name": "타율",
+        "value": "0.272"
+      },
+      {
+        "name": "출루율",
+        "value": "0.328"
+      },
+      {
+        "name": "장타율",
+        "value": "0.375"
+      },
+      {
+        "name": "OPS",
+        "value": "0.703"
+      },
+      {
+        "name": "홈런",
+        "value": "6"
+      },
+      {
+        "name": "타점",
+        "value": "53"
+      },
+      {
+        "name": "도루",
+        "value": "18"
+      },
+      {
+        "name": "WAR",
+        "value": "0.83"
+      },
+      {
+        "name": "oWAR",
+        "value": "0.78"
+      },
+      {
+        "name": "dWAR",
+        "value": "0.05"
+      },
+      {
+        "name": "wRC+",
+        "value": "78.2"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 28",
+    "realName": "84 최동원",
+    "position": "SP",
+    "displayPosition": "선발",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "2.4"
+      },
+      {
+        "name": "승",
+        "value": "27"
+      },
+      {
+        "name": "패",
+        "value": "13"
+      },
+      {
+        "name": "이닝",
+        "value": "284.2"
+      },
+      {
+        "name": "탈삼진",
+        "value": "223"
+      },
+      {
+        "name": "볼넷",
+        "value": "68"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.04"
+      },
+      {
+        "name": "FIP",
+        "value": "2.11"
+      },
+      {
+        "name": "WAR",
+        "value": "7.7"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 29",
+    "realName": "86 최동원",
+    "position": "SP",
+    "displayPosition": "선발",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "1.55"
+      },
+      {
+        "name": "승",
+        "value": "19"
+      },
+      {
+        "name": "패",
+        "value": "14"
+      },
+      {
+        "name": "이닝",
+        "value": "267"
+      },
+      {
+        "name": "탈삼진",
+        "value": "208"
+      },
+      {
+        "name": "볼넷",
+        "value": "55"
+      },
+      {
+        "name": "WHIP",
+        "value": "0.97"
+      },
+      {
+        "name": "FIP",
+        "value": "1.34"
+      },
+      {
+        "name": "WAR",
+        "value": "9.47"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 30",
+    "realName": "05 손민한",
+    "position": "SP",
+    "displayPosition": "선발",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "2.46"
+      },
+      {
+        "name": "승",
+        "value": "18"
+      },
+      {
+        "name": "패",
+        "value": "7"
+      },
+      {
+        "name": "이닝",
+        "value": "168.1"
+      },
+      {
+        "name": "탈삼진",
+        "value": "105"
+      },
+      {
+        "name": "볼넷",
+        "value": "38"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.11"
+      },
+      {
+        "name": "FIP",
+        "value": "3.22"
+      },
+      {
+        "name": "WAR",
+        "value": "5.7"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 31",
+    "realName": "92 염종석",
+    "position": "SP",
+    "displayPosition": "선발",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "2.33"
+      },
+      {
+        "name": "승",
+        "value": "17"
+      },
+      {
+        "name": "패",
+        "value": "9"
+      },
+      {
+        "name": "이닝",
+        "value": "204.2"
+      },
+      {
+        "name": "탈삼진",
+        "value": "127"
+      },
+      {
+        "name": "볼넷",
+        "value": "35"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.01"
+      },
+      {
+        "name": "FIP",
+        "value": "2.54"
+      },
+      {
+        "name": "WAR",
+        "value": "7.78"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 32",
+    "realName": "22 구승민",
+    "position": "RP",
+    "displayPosition": "필승조",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "2.9"
+      },
+      {
+        "name": "승",
+        "value": "2"
+      },
+      {
+        "name": "패",
+        "value": "4"
+      },
+      {
+        "name": "홀드",
+        "value": "26"
+      },
+      {
+        "name": "세이브",
+        "value": "0"
+      },
+      {
+        "name": "이닝",
+        "value": "62"
+      },
+      {
+        "name": "탈삼진",
+        "value": "77"
+      },
+      {
+        "name": "볼넷",
+        "value": "35"
+      },
+      {
+        "name": "K/9",
+        "value": "11.18"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.31"
+      },
+      {
+        "name": "FIP",
+        "value": "2.91"
+      },
+      {
+        "name": "WAR",
+        "value": "1.58"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 33",
+    "realName": "04 임경완",
+    "position": "RP",
+    "displayPosition": "필승조",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "3.16"
+      },
+      {
+        "name": "승",
+        "value": "4"
+      },
+      {
+        "name": "패",
+        "value": "6"
+      },
+      {
+        "name": "홀드",
+        "value": "22"
+      },
+      {
+        "name": "세이브",
+        "value": "5"
+      },
+      {
+        "name": "이닝",
+        "value": "105.1"
+      },
+      {
+        "name": "탈삼진",
+        "value": "72"
+      },
+      {
+        "name": "볼넷",
+        "value": "41"
+      },
+      {
+        "name": "K/9",
+        "value": "6.15"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.36"
+      },
+      {
+        "name": "FIP",
+        "value": "3.38"
+      },
+      {
+        "name": "WAR",
+        "value": "2.96"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 34",
+    "realName": "21 최준용",
+    "position": "RP",
+    "displayPosition": "필승조",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "2.85"
+      },
+      {
+        "name": "승",
+        "value": "4"
+      },
+      {
+        "name": "패",
+        "value": "2"
+      },
+      {
+        "name": "홀드",
+        "value": "20"
+      },
+      {
+        "name": "세이브",
+        "value": "1"
+      },
+      {
+        "name": "이닝",
+        "value": "47.1"
+      },
+      {
+        "name": "탈삼진",
+        "value": "45"
+      },
+      {
+        "name": "볼넷",
+        "value": "16"
+      },
+      {
+        "name": "K/9",
+        "value": "8.56"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.2"
+      },
+      {
+        "name": "FIP",
+        "value": "3.95"
+      },
+      {
+        "name": "WAR",
+        "value": "1.95"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 35",
+    "realName": "23 김상수",
+    "position": "RP",
+    "displayPosition": "필승조",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "3.12"
+      },
+      {
+        "name": "승",
+        "value": "4"
+      },
+      {
+        "name": "패",
+        "value": "2"
+      },
+      {
+        "name": "홀드",
+        "value": "18"
+      },
+      {
+        "name": "세이브",
+        "value": "1"
+      },
+      {
+        "name": "이닝",
+        "value": "52"
+      },
+      {
+        "name": "탈삼진",
+        "value": "36"
+      },
+      {
+        "name": "볼넷",
+        "value": "21"
+      },
+      {
+        "name": "K/9",
+        "value": "6.23"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.27"
+      },
+      {
+        "name": "FIP",
+        "value": "3.78"
+      },
+      {
+        "name": "WAR",
+        "value": "1.53"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 36",
+    "realName": "17 손승락",
+    "position": "CP",
+    "displayPosition": "마무리",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "2.18"
+      },
+      {
+        "name": "승",
+        "value": "1"
+      },
+      {
+        "name": "패",
+        "value": "3"
+      },
+      {
+        "name": "홀드",
+        "value": "0"
+      },
+      {
+        "name": "세이브",
+        "value": "37"
+      },
+      {
+        "name": "이닝",
+        "value": "62"
+      },
+      {
+        "name": "탈삼진",
+        "value": "62"
+      },
+      {
+        "name": "볼넷",
+        "value": "11"
+      },
+      {
+        "name": "K/9",
+        "value": "9"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.13"
+      },
+      {
+        "name": "FIP",
+        "value": "3.55"
+      },
+      {
+        "name": "WAR",
+        "value": "2.51"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 37",
+    "realName": "25 김원중",
+    "position": "CP",
+    "displayPosition": "마무리",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "2.67"
+      },
+      {
+        "name": "승",
+        "value": "4"
+      },
+      {
+        "name": "패",
+        "value": "3"
+      },
+      {
+        "name": "홀드",
+        "value": "0"
+      },
+      {
+        "name": "세이브",
+        "value": "32"
+      },
+      {
+        "name": "이닝",
+        "value": "60.2"
+      },
+      {
+        "name": "탈삼진",
+        "value": "69"
+      },
+      {
+        "name": "볼넷",
+        "value": "33"
+      },
+      {
+        "name": "K/9",
+        "value": "10.24"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.5"
+      },
+      {
+        "name": "FIP",
+        "value": "3.55"
+      },
+      {
+        "name": "WAR",
+        "value": "1.61"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 38",
+    "realName": "12 김사율",
+    "position": "CP",
+    "displayPosition": "마무리",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "2.98"
+      },
+      {
+        "name": "승",
+        "value": "2"
+      },
+      {
+        "name": "패",
+        "value": "3"
+      },
+      {
+        "name": "홀드",
+        "value": "1"
+      },
+      {
+        "name": "세이브",
+        "value": "34"
+      },
+      {
+        "name": "이닝",
+        "value": "45.1"
+      },
+      {
+        "name": "탈삼진",
+        "value": "43"
+      },
+      {
+        "name": "볼넷",
+        "value": "11"
+      },
+      {
+        "name": "K/9",
+        "value": "8.54"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.24"
+      },
+      {
+        "name": "FIP",
+        "value": "3.05"
+      },
+      {
+        "name": "WAR",
+        "value": "1.22"
+      }
+    ]
+  },
+  {
+    "id": "PLAYER 39",
+    "realName": "94 박동희",
+    "position": "CP",
+    "displayPosition": "마무리",
+    "stats": [
+      {
+        "name": "ERA",
+        "value": "3.01"
+      },
+      {
+        "name": "승",
+        "value": "6"
+      },
+      {
+        "name": "패",
+        "value": "5"
+      },
+      {
+        "name": "홀드",
+        "value": "0"
+      },
+      {
+        "name": "세이브",
+        "value": "31"
+      },
+      {
+        "name": "이닝",
+        "value": "74.2"
+      },
+      {
+        "name": "탈삼진",
+        "value": "61"
+      },
+      {
+        "name": "볼넷",
+        "value": "20"
+      },
+      {
+        "name": "K/9",
+        "value": "7.35"
+      },
+      {
+        "name": "WHIP",
+        "value": "1.17"
+      },
+      {
+        "name": "FIP",
+        "value": "2.34"
+      },
+      {
+        "name": "WAR",
+        "value": "1.98"
+      }
+    ]
+  }
+];
+
+const customGuideText = "*공통 용어\n\nWAR (대체 선수 대비 승리 기여도)\n\n한 줄 요약: \"이 선수가 팀에 몇 승을 더 가져다주었는가?\"를 뜻하는 종합 성적표.\n\n쉬운 설명: 야수는 타격·주루·수비, 투수는 실점 억제 능력을 종합하여 평범한 대체 선수보다 팀 승리에 얼마나 더 기여했는지를 수치로 나타낸 지표입니다.\n\n기준점: 2.0 이상이면 좋은 주전, 4.0 이상이면 올스타급, 6.0 이상이면 MVP급 시즌입니다.\n\noWAR : 공격 WAR\ndWAR : 수비 WAR\n\n\n? 야수 핵심 스탯\n\nOPS (출루율 + 장타율)\n\n한 줄 요약: 타자의 생산성을 보여주는 가장 직관적인 지표.\n\n쉬운 설명: 베이스에 얼마나 잘 살아 나가는지(출루율)와 얼마나 멀리 치는지(장타율)를 더한 점수입니다.\n\n기준점: 0.800 이상이면 우수한 타자, 0.900 이상이면 리그 정상급 강타자입니다.\n\n\nwRC+ (조정 득점 창출력)\n\n한 줄 요약: 구장과 시대 효과를 반영한 타자의 순수 공격력.\n\n쉬운 설명: 리그 평균 타자의 공격력을 100으로 두고 비교한 지표입니다. 120이라면 평균보다 20% 더 많은 득점 생산에 기여했다는 뜻입니다.\n\n기준점: 100이 평균이며, 120 이상이면 우수한 타자, 140 이상이면 MVP급 공격력을 의미합니다.\n\n\n? 투수 핵심 스탯\n\nWHIP (이닝당 출루 허용률)\n\n한 줄 요약: 투수가 한 이닝에 평균 몇 명의 주자를 내보내는지 보여주는 지표.\n\n쉬운 설명: 안타와 볼넷을 얼마나 적게 허용하는지를 나타냅니다. 낮을수록 안정적인 투수입니다.\n\n기준점: 1.30 이하면 준수, 1.20 이하면 에이스급입니다. 불펜은 일반적으로 더 낮은 수치를 기록합니다.\n\n\nFIP (수비 무관 방어율)\n\n한 줄 요약: 수비의 영향을 제거하고 투수의 순수 능력만 평가한 지표.\n\n쉬운 설명: 홈런, 볼넷, 사구, 탈삼진 등 투수가 직접 통제할 수 있는 결과만으로 계산한 방어율입니다.\n\n기준점: ERA와 비슷하게 해석하며, 3점대 초반 이하면 매우 우수한 투수입니다.";
+
+let currentFilter = 'C';
+let dragSourceIndex = null;
+let pressTimer = null;
+let gaugeTimer = null;
+let gaugeWidth = 0;
+let lineupArray = Array(9).fill(null).map((_, i) => ({ slotNum: i + 1, cardId: null, name: '선수 미배치', pos: '-', statsStr: '' }));
+
+const posLangMap = {
+    'C': '포수', '1B': '1루수', '2B': '2루수', '3B': '3루수', 'SS': '유격수',
+    'CF': '중견수', 'LF/RF': 'LF/RF', 'LF': '좌익수', 'RF': '우익수', 'OF': 'LF/RF', 'DH': '지명', 'SP': '선발', 'RP': '필승조', 'CP': '마무리'
+};
+
+function renderLineup() {
+            const container = document.getElementById('lineup-list'); if(!container) return; container.innerHTML = '';
+            lineupArray.forEach((item, index) => {
+                const div = document.createElement('div'); div.className = 'lineup-item'; div.draggable = true; div.setAttribute('data-index', index);
+                div.addEventListener('dragstart', handleLineupDragStart); div.addEventListener('dragover', handleLineupDragOver); div.addEventListener('dragleave', handleLineupDragLeave); div.addEventListener('drop', handleLineupDrop);
+                const statsHtml = item.cardId ? `<span class="lineup-stats">${item.statsStr || ''}</span>` : '';
+                div.innerHTML = `<span class="lineup-num">${item.slotNum}번</span><div class="lineup-info"><span class="lineup-name ${item.cardId ? 'filled' : ''}">${item.name}</span>${statsHtml}</div><span class="lineup-pos">${item.pos}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        function autoFillLineup(cardId, pId, korPos) {
+            if (lineupArray.find(item => item.cardId === cardId)) return;
+            for (let i = 0; i < lineupArray.length; i++) {
+                if (!lineupArray[i].cardId) {
+                    const card = document.getElementById(cardId);
+                    lineupArray[i].cardId = cardId;
+                    lineupArray[i].name = card.classList.contains('revealed') ? card.getAttribute('data-real-name') : pId;
+                    lineupArray[i].pos = korPos;
+                    lineupArray[i].statsStr = buildLineupStats(pId);
+                    break;
+                }
+            }
+            renderLineup();
+        }
+
+        function autoRemoveFromLineup(cardId) {
+    for (let i = 0; i < lineupArray.length; i++) {
+        if (lineupArray[i].cardId === cardId) {
+            lineupArray[i].cardId = null;
+            lineupArray[i].name = '선수 미배치';
+            lineupArray[i].pos = '-';
+            lineupArray[i].statsStr = '';
+            break;
+        }
+    }
+    renderLineup();
+}
+
+function handleLineupDragStart(e) { dragSourceIndex = this.dataset.index; e.dataTransfer.effectAllowed = 'move'; }
+function handleLineupDragOver(e) { e.preventDefault(); this.classList.add('drag-over-lineup'); }
+function handleLineupDragLeave() { this.classList.remove('drag-over-lineup'); }
+function handleLineupDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over-lineup');
+    const targetIndex = this.dataset.index;
+    
+    if (dragSourceIndex !== null && dragSourceIndex !== targetIndex) {
+        const source = lineupArray[dragSourceIndex];
+        const target = lineupArray[targetIndex];
+        
+        const tempCardId = source.cardId;
+        const tempName = source.name;
+        const tempPos = source.pos;
+        const tempStatsStr = source.statsStr;
+        
+        source.cardId = target.cardId;
+        source.name = target.name;
+        source.pos = target.pos;
+        source.statsStr = target.statsStr;
+        
+        target.cardId = tempCardId;
+        target.name = tempName;
+        target.pos = tempPos;
+        target.statsStr = tempStatsStr;
+        
+        renderLineup();
+    }
+}
+
+function openGuideModal() {
+    document.getElementById('modal-body-content').textContent = customGuideText;
+    document.getElementById('guide-modal').style.display = 'flex';
+}
+function closeGuideModal() { document.getElementById('guide-modal').style.display = 'none'; }
+
+function getBenchGroup(pos) {
+    const p = (pos || '').toUpperCase();
+    if (p === 'LF' || p === 'RF' || p === 'OF') return 'LF/RF';
+    return p;
+}
+
+function filterBench(pos) {
+    currentFilter = pos;
+    const normalized = (pos || 'C').toUpperCase();
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        const btnPos = (btn.dataset.pos || '').toUpperCase();
+        btn.classList.toggle('active', btnPos === normalized);
+    });
+
+    const bench = document.getElementById('bench-zone');
+    if (!bench) return;
+    bench.querySelectorAll('.bench-section-title').forEach(el => el.remove());
+    const benchCards = Array.from(bench.querySelectorAll('.player-card'));
+
+    const appendVisible = (card) => {
+        card.style.display = 'flex';
+        bench.appendChild(card);
+    };
+
+    if (normalized === 'DH') {
+        const dhCards = [];
+        const otherCards = [];
+        const hitterPositions = ['C', '1B', '2B', '3B', 'SS', 'CF', 'LF/RF', 'LF', 'RF', 'OF'];
+        benchCards.forEach(card => {
+            const cardPos = (card.getAttribute('data-pos') || '').toUpperCase();
+            if (cardPos === 'DH') dhCards.push(card);
+            else if (hitterPositions.includes(cardPos)) otherCards.push(card);
+            else card.style.display = 'none';
+        });
+
+        if (dhCards.length > 0) {
+            const dhTitle = document.createElement('div');
+            dhTitle.className = 'bench-section-title';
+            dhTitle.textContent = 'DH 전용';
+            bench.appendChild(dhTitle);
+            dhCards.forEach(appendVisible);
+        }
+
+        if (otherCards.length > 0) {
+            const otherTitle = document.createElement('div');
+            otherTitle.className = 'bench-section-title';
+            otherTitle.textContent = '그 외 포지션';
+            bench.appendChild(otherTitle);
+            otherCards.forEach(appendVisible);
+        }
+        return;
+    }
+
+    benchCards.forEach(card => {
+        const cardGroup = getBenchGroup(card.getAttribute('data-pos'));
+        card.style.display = cardGroup === normalized ? 'flex' : 'none';
+        bench.appendChild(card);
+    });
+}
+
+function formatStat(statName, value) {
+    if (value === null || value === undefined) return '-';
+    const raw = String(value).trim();
+    if (raw === '' || raw === '-') return raw || '-';
+
+    const cleaned = raw.replace(/,/g, '');
+    if (cleaned === '' || isNaN(Number(cleaned))) return raw;
+
+    const num = Number(cleaned);
+    const key = String(statName || '').trim().toUpperCase().replace(/\s+/g, '');
+
+    const threeDecimalStats = ['타율','출루율','장타율','OPS','AVG','OBP','SLG'];
+    const twoDecimalStats = ['ERA','WHIP','FIP','K/9','BB/9','H/9','HR/9','SO/9','K/BB','평균자책','방어율'];
+
+    if (threeDecimalStats.includes(key)) return num.toFixed(3);
+    if (twoDecimalStats.includes(key)) return num.toFixed(2);
+    return raw;
+}
+
+function buildLineupStats(playerId) {
+    const player = savedPlayersData.find(p => p.id === playerId);
+    if (!player || !Array.isArray(player.stats)) return '';
+
+    const findStat = (names) => {
+        const targets = names.map(n => String(n).trim().toUpperCase().replace(/\s+/g, ''));
+        const stat = player.stats.find(s => targets.includes(String(s.name || '').trim().toUpperCase().replace(/\s+/g, '')));
+        return stat ? formatStat(stat.name, stat.value) : '-';
+    };
+
+    const avg = findStat(['타율', 'AVG']);
+    const hr = findStat(['홈런', 'HR', '홈런수']);
+    const rbi = findStat(['타점', 'RBI']);
+    const sb = findStat(['도루', 'SB']);
+
+    return `타율 ${avg} | 홈런 ${hr}<br>타점 ${rbi} | 도루 ${sb}`;
+}
+
+function createPlayerCard(player, targetContainer) {
+    const card = document.createElement('div');
+    card.className = 'player-card';
+    card.draggable = true;
+    card.id = `card-${player.id.replace(/\s+/g, '-')}`;
+    card.setAttribute('data-pos', player.position);
+    card.setAttribute('data-fake-id', player.id);
+    card.setAttribute('data-real-name', player.realName);
+
+    card.addEventListener('dragstart', dragStart);
+    card.addEventListener('mousedown', startPress);
+    card.addEventListener('mouseup', cancelPress);
+    card.addEventListener('mouseleave', cancelPress);
+    card.addEventListener('touchstart', startPress, { passive: true });
+    card.addEventListener('touchend', cancelPress, { passive: true });
+
+    let statsHtml = '<div class="card-body">';
+    player.stats.forEach(stat => {
+        statsHtml += `<div class="stat-row"><span class="stat-name">${stat.name}</span><span class="stat-value">${formatStat(stat.name, stat.value)}</span></div>`;
+    });
+    statsHtml += '</div>';
+
+    card.innerHTML = `
+        <div class="card-header">
+            <span class="card-id" id="name-display-${card.id}">${player.id}</span>
+            <span class="card-pos-tag">${player.displayPosition}</span>
+        </div>
+        ${statsHtml}
+        <div class="card-footer" id="footer-${card.id}"></div>
+        <div class="longpress-gauge" id="gauge-${card.id}"></div>
+    `;
+    targetContainer.appendChild(card);
+}
+
+function startPress(e) {
+    const card = e.currentTarget;
+    if (!card.classList.contains('placed-in-slot')) return;
+    if (card.classList.contains('revealed')) return;
+    const gauge = document.getElementById(`gauge-${card.id}`);
+    gaugeWidth = 0;
+    if (gauge) gauge.style.width = '0%';
+    clearInterval(gaugeTimer);
+    gaugeTimer = setInterval(() => {
+        gaugeWidth += 10;
+        if (gauge) gauge.style.width = `${gaugeWidth}%`;
+    }, 100);
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+        clearInterval(gaugeTimer);
+        executeReveal(card.id);
+    }, 1000);
+}
+
+function cancelPress(e) {
+    clearTimeout(pressTimer);
+    clearInterval(gaugeTimer);
+    const card = e.currentTarget;
+    const gauge = document.getElementById(`gauge-${card.id}`);
+    if (gauge) gauge.style.width = '0%';
+}
+
+function executeReveal(cardId) {
+    const card = document.getElementById(cardId);
+    const nameDisplay = document.getElementById(`name-display-${cardId}`);
+    const realName = card.getAttribute('data-real-name');
+    if (card && nameDisplay) {
+        nameDisplay.textContent = realName;
+        card.classList.add('revealed');
+    }
+    for (let i = 0; i < lineupArray.length; i++) {
+        if (lineupArray[i].cardId === cardId) {
+            lineupArray[i].name = realName;
+            break;
+        }
+    }
+    renderLineup();
+}
+
+
+function resetCardToBlind(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    card.classList.remove('revealed');
+    const nameDisplay = document.getElementById(`name-display-${cardId}`);
+    if (nameDisplay) nameDisplay.textContent = card.getAttribute('data-fake-id') || '';
+    const gauge = document.getElementById(`gauge-${cardId}`);
+    if (gauge) gauge.style.width = '0%';
+}
+
+function dragStart(ev) {
+    clearTimeout(pressTimer);
+    clearInterval(gaugeTimer);
+    ev.dataTransfer.setData('text/plain', ev.currentTarget.id);
+}
+
+function isCardAllowedInSlot(slotPos, cardPos) {
+    const slot = (slotPos || '').toUpperCase();
+    const card = (cardPos || '').toUpperCase();
+    const hitterPositions = ['C', '1B', '2B', '3B', 'SS', 'CF', 'LF/RF', 'LF', 'RF', 'OF', 'DH'];
+    if (slot === 'DH') return hitterPositions.includes(card);
+    if (slot === 'LF/RF') return ['LF/RF', 'LF', 'RF', 'OF'].includes(card);
+    return slot === card;
+}
+
+function initDragAndDrop() {
+    document.querySelectorAll('.position-slot, #bench-zone').forEach(zone => {
+        zone.addEventListener('dragover', e => {
+            e.preventDefault();
+            if (zone.classList.contains('position-slot')) zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            const cardId = e.dataTransfer.getData('text/plain');
+            const cardElement = document.getElementById(cardId);
+            if (!cardElement) return;
+
+            if (zone.classList.contains('position-slot')) {
+                if (zone.children.length > 0) {
+                    alert('이 위치는 이미 차 있습니다.');
+                    return;
+                }
+                const slotPos = zone.getAttribute('data-pos');
+                const cardPos = cardElement.getAttribute('data-pos');
+                if (!isCardAllowedInSlot(slotPos, cardPos)) {
+                    alert(slotPos === 'DH' ? 'DH에는 야수만 배치할 수 있습니다.' : `${posLangMap[slotPos] || slotPos} 자리만 넣을 수 있습니다.`);
+                    return;
+                }
+                cardElement.classList.add('placed-in-slot');
+                const footer = document.getElementById(`footer-${cardId}`);
+                if (footer) footer.textContent = zone.getAttribute('data-display-pos');
+                zone.appendChild(cardElement);
+                if (slotPos === 'DH' || !['SP','RP','CP'].includes(cardPos)) {
+                    autoFillLineup(cardId, cardElement.getAttribute('data-fake-id'), slotPos === 'DH' ? posLangMap['DH'] : (posLangMap[cardPos] || cardPos));
+                }
+            } else if (zone.id === 'bench-zone') {
+                cardElement.classList.remove('placed-in-slot');
+                const footer = document.getElementById(`footer-${cardId}`);
+                if (footer) footer.textContent = '';
+                zone.appendChild(cardElement);
+                resetCardToBlind(cardId);
+                autoRemoveFromLineup(cardId);
+                filterBench(currentFilter);
+            }
+        });
+    });
+}
+
+window.onload = function() {
+    renderLineup();
+    initDragAndDrop();
+    const benchZone = document.getElementById('bench-zone');
+    savedPlayersData.forEach(player => createPlayerCard(player, benchZone));
+    filterBench('C');
+};
+</script>
+</body>
+</html>
